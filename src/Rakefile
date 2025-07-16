@@ -1,0 +1,42 @@
+# ./src/Rakefile
+require 'rake/clean'
+
+# Variables
+GNATMAKE = "gnatmake14"
+AR = "ar"
+CC = "cc" #
+ADA_CFLAGS = "-cargs \"-fPIC\""
+
+# Source and object files
+SOURCES = FileList['*.adb', 'dl-open.c']
+LIB_OBJECTS = FileList['*.adb'].pathmap('%n.o') + FileList['dl-open.c'].pathmap('%n.o')
+
+# Library files
+STATIC_LIB = "libcada.a"
+SHARED_LIB = "libcada.so"
+
+# Default task: create all libraries
+task :default => [STATIC_LIB, SHARED_LIB]
+
+# Object file creation rules
+rule '.o' => '.adb' do |t|
+  sh "#{GNATMAKE} -c -I. #{t.source} #{ADA_CFLAGS}"
+end
+
+rule '.o' => '.c' do |t|
+  sh "#{CC} -fPIC -c -o #{t.name} #{t.source}"
+end
+
+# Library creation rules
+file STATIC_LIB => LIB_OBJECTS do |t|
+  puts "Archiving #{t.name}..."
+  sh "#{AR} rcs #{t.name} #{LIB_OBJECTS.join(' ')}"
+end
+
+file SHARED_LIB => LIB_OBJECTS do |t|
+  puts "Linking #{t.name}..."
+  sh "#{CC} -shared -o #{t.name} #{LIB_OBJECTS.join(' ')}"
+end
+
+# Clean up task
+CLEAN.include('*.o', '*.ali', STATIC_LIB, SHARED_LIB, 'b~*')
