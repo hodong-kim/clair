@@ -1,0 +1,82 @@
+Clair - A Low-Level POSIX Library for Ada
+==========================================
+
+Clair is a library that provides safe, portable, and idiomatic Ada bindings
+for common low-level POSIX/C system interfaces. The primary goal is to
+abstract away platform-specific details and unsafe C constructs, offering
+a robust foundation for systems programming in Ada.
+
+Features
+--------
+* Safe Wrappers: Provides type-safe Ada interfaces for POSIX functions.
+* Modular Design: Includes modules for File I/O, Process Management,
+    Signal Handling, Dynamic Library Loading, and Error Management.
+* Automatic Spec Generation: Uses tools to generate Ada specifications
+    directly from system headers, ensuring correctness and portability.
+* Rich Error Handling: Maps system `errno` values to a comprehensive
+    set of distinct Ada exceptions for precise error handling.
+* Dual Library Support: Builds both static (`libclair.a`) and shared
+    (`libclair.so`) libraries.
+* Simple Build System: Uses a Rakefile for easy compilation and testing.
+
+Requirements
+------------
+* GNAT (The GNAT Ada Compiler)
+* GCC (The GNU C Compiler)
+* AR (The GNU Archiver)
+* Ruby (for the build system)
+
+Building the Library
+--------------------
+The build process is managed by a Rakefile. The first time you run it,
+it will automatically detect and cache the paths to the required tools
+(gnatmake, gcc, ar).
+
+To build both the static and shared libraries:
+    $ rake
+
+This will create `build/libclair.a` and `build/libclair.so`.
+
+To build and run the test suite:
+    $ rake tests
+    $ rake test_process
+
+To clean up build artifacts and the cached tool configuration:
+    $ rake clean
+
+Usage
+-----
+To use Clair in your project, you need to:
+1.  Add the `src` directory of the Clair library to your compiler's search
+    path (e.g., using the `-I` flag with `gnatmake`).
+2.  Link your application with either the static (`libclair.a`) or shared
+    (`libclair.so`) library.
+3.  `with` the required Clair packages in your Ada source code, for
+    example: `with Clair.File;`.
+
+Library Modules
+---------------
+* Clair.Error: Manages POSIX `errno` and maps them to Ada exceptions.
+* Clair.File: Provides file descriptor operations (`open`, `close`,
+    `read`, `write`, `pipe`).
+* Clair.Process: Handles process control (`fork`, `get_pid`, `exit`).
+* Clair.Signal: Manages POSIX signals (`sigaction`, `raise`, `pause`).
+* Clair.DL: Wraps dynamic library loading functions (`dlopen`, `dlsym`).
+* Clair.Types: Defines portable POSIX types like `pid_t` and `mode_t`.
+
+License
+-------
+This software is released under the 0BSD license.
+
+Copyright (C) 2019-2025 Hodong Kim
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
