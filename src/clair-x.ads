@@ -1,4 +1,4 @@
--- test_clair_signal_main.adb
+-- clair-x.ads
 -- Copyright (c) 2025 Hodong Kim <hodong@nimfsoft.art>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
@@ -12,9 +12,27 @@
 -- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 -- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-with Test_Clair_Signal;
+with Interfaces.C;
+with Interfaces.C.Strings;
+with System;
+with Clair.File;
 
-procedure test_clair_signal_main is
-begin
-  Test_Clair_Signal.run;
-end test_clair_signal_main;
+package Clair.X is
+
+   Display_Open_Error     : exception;
+   Display_Close_Error    : exception;
+   Connection_Fd_Error    : exception;
+   Invalid_Display_Handle : exception;
+
+   subtype Display_Handle is System.Address;
+
+   function open_display (display_name : Interfaces.C.Strings.chars_ptr :=
+                          Interfaces.C.Strings.NULL_PTR)
+   return Display_Handle;
+
+   procedure close_display (display : Display_Handle);
+
+   function get_connection_fd (display : Display_Handle)
+   return Clair.File.Descriptor;
+
+end Clair.X;
