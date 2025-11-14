@@ -1,0 +1,15 @@
+with "../clair.gpr";
+
+project Tests_Clair is
+   for Source_Dirs use (".");
+   for Object_Dir  use "../obj/tests";
+   for Exec_Dir    use "../bin/tests";
+
+   for Main use ("test_clair_signal_main.adb",
+                 "test_clair_x.adb");
+
+   package Linker is
+      for Linker_Options use ("-L/usr/local/lib", "-lX11");
+   end Linker;
+
+end Tests_Clair;

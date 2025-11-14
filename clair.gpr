@@ -1,0 +1,19 @@
+-- clair.gpr
+project Clair is
+
+   for Source_Dirs use ("src");
+   for Object_Dir  use "obj";
+   for Exec_Dir    use "bin";
+
+   for Languages use ("Ada", "C");
+
+   for Library_Name use "clair";
+   for Library_Dir  use "lib";
+   for Library_Kind use "static";
+
+   package Compiler is
+      for Default_Switches ("Ada") use ("-gnat2022", "-fPIC");
+      for Default_Switches ("C")   use ("-Wall", "-Werror", "-fPIC");
+   end Compiler;
+
+end Clair;

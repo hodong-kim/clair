@@ -1,22 +1,26 @@
-Clair - A Low-Level POSIX Library for Ada
-==========================================
+Clair - A Low-Level POSIX & Xlib Library for Ada
+================================================
 
 Clair is a library that provides safe, portable, and idiomatic Ada bindings
-for common low-level POSIX/C system interfaces. The primary goal is to
-abstract away platform-specific details and unsafe C constructs, offering
-a robust foundation for systems programming in Ada.
+for common low-level POSIX/C system interfaces. It now also includes
+optional bindings for **Xlib**, enabling Ada programs to interact with
+the X Window System in a type-safe and portable way.
+
+The primary goal is to abstract away platform-specific details and unsafe
+C constructs, offering a robust foundation for systems programming in Ada,
+with optional support for graphical environments via Xlib.
 
 Features
 --------
-* Safe Wrappers: Provides type-safe Ada interfaces for POSIX functions.
+* Safe Wrappers: Provides type-safe Ada interfaces for POSIX and Xlib functions.
 * Modular Design: Includes modules for File I/O, Process Management,
-    Signal Handling, Dynamic Library Loading, and Error Management.
+  Signal Handling, Dynamic Library Loading, Error Management, and Xlib.
 * Automatic Spec Generation: Uses tools to generate Ada specifications
-    directly from system headers, ensuring correctness and portability.
+  directly from system headers, ensuring correctness and portability.
 * Rich Error Handling: Maps system `errno` values to a comprehensive
-    set of distinct Ada exceptions for precise error handling.
+  set of distinct Ada exceptions for precise error handling.
 * Dual Library Support: Builds both static (`libclair.a`) and shared
-    (`libclair.so`) libraries.
+  (`libclair.so`) libraries.
 * Simple Build System: Uses a Rakefile for easy compilation and testing.
 
 Requirements
@@ -25,6 +29,7 @@ Requirements
 * GCC (The GNU C Compiler)
 * AR (The GNU Archiver)
 * Ruby (for the build system)
+* Xlib development headers (for building the optional Clair.X module)
 
 Building the Library
 --------------------
@@ -46,23 +51,25 @@ To clean up build artifacts and the cached tool configuration:
 
 Usage
 -----
-To use Clair in your project, you need to:
-1.  Add the `src` directory of the Clair library to your compiler's search
-    path (e.g., using the `-I` flag with `gnatmake`).
-2.  Link your application with either the static (`libclair.a`) or shared
-    (`libclair.so`) library.
-3.  `with` the required Clair packages in your Ada source code, for
-    example: `with Clair.File;`.
+To use Clair in your project:
+1. Add the `src` directory of the Clair library to your compiler's search
+   path (e.g., using the `-I` flag with `gnatmake`).
+2. Link your application with either the static (`libclair.a`) or shared
+   (`libclair.so`) library.
+3. `with` the required Clair packages in your Ada source code, for
+   example: `with Clair.File;` or `with Clair.X;`.
 
 Library Modules
 ---------------
 * Clair.Error: Manages POSIX `errno` and maps them to Ada exceptions.
 * Clair.File: Provides file descriptor operations (`open`, `close`,
-    `read`, `write`, `pipe`).
+  `read`, `write`, `pipe`).
 * Clair.Process: Handles process control (`fork`, `get_pid`, `exit`).
 * Clair.Signal: Manages POSIX signals (`sigaction`, `raise`, `pause`).
 * Clair.DL: Wraps dynamic library loading functions (`dlopen`, `dlsym`).
 * Clair.Types: Defines portable POSIX types like `pid_t` and `mode_t`.
+* Clair.X: Provides Ada bindings for selected Xlib functions
+  (`OpenDisplay`, `CloseDisplay`, `ConnectionNumber`).
 
 License
 -------
