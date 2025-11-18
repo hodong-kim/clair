@@ -16,8 +16,4 @@ library project Clair is
       for Default_Switches ("C")   use ("-Wall", "-Werror", "-fPIC");
    end Compiler;
 
-   package Linker is
-      for Linker_Options use ("-L/usr/local/lib", "-lX11");
-   end Linker;
-
 end Clair;

@@ -27,14 +27,14 @@ package body Clair.Error is
 
   function get_error_message (errno_code : Interfaces.C.int) return String is
     BUFFER_SIZE : constant Interfaces.C.size_t := 256;
-    buffer      : Interfaces.C.char_array (0 .. BUFFER_SIZE - 1) :=
-                    (others => Interfaces.C.NUL);
+    buffer      : Interfaces.C.char_array (0 .. BUFFER_SIZE - 1);
     retval      : constant Interfaces.C.int :=
                     strerror_r (errno_code, buffer, BUFFER_SIZE);
   begin
     if retval = 0 then
       -- Success: return the content of the buffer.
-      return Interfaces.C.Strings.value (to_chars_ptr (buffer'address));
+      return Interfaces.C.Strings.value (
+             sys_addr_to_chars_ptr (buffer'address));
     else
       -- Handle strerror_r's own failure without recursion.
       case retval is
