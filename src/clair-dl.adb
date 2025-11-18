@@ -46,10 +46,10 @@ package body Clair.DL is
   end get_dl_error;
 
   function open (path : String; mode : Integer) return Handle is
-    c_path : constant Interfaces.C.char_array := Interfaces.C.to_c (path) &
-                                                 Interfaces.C.NUL;
+    c_path : constant Interfaces.C.char_array := Interfaces.C.to_c (path);
     lib : constant System.Address :=
-      c_dlopen (to_chars_ptr (c_path'address), Interfaces.C.int (mode));
+      c_dlopen (sys_addr_to_chars_ptr (c_path'address),
+                Interfaces.C.int (mode));
   begin
     if lib = System.NULL_ADDRESS then
       raise Library_Load_Error with "dlopen(" & path & "," & mode'image &
@@ -77,7 +77,7 @@ package body Clair.DL is
                         sym_name : in String) return System.Address is
     sym_addr     : System.Address;
     c_sym_name   : constant Interfaces.C.char_array :=
-                            Interfaces.C.to_c (sym_name) & Interfaces.C.NUL;
+                            Interfaces.C.to_c (sym_name);
     dummy_result : Interfaces.C.Strings.chars_ptr;
   begin
     if lib = NULL_HANDLE then
@@ -89,7 +89,7 @@ package body Clair.DL is
     dummy_result := c_dlerror;
     pragma unreferenced (dummy_result);
     sym_addr     := c_dlsym (System.Address (lib),
-                             to_chars_ptr (c_sym_name'address));
+                             sys_addr_to_chars_ptr (c_sym_name'address));
     -- If dlsym returns NULL, check dlerror to see if it was a real error.
     if sym_addr = System.NULL_ADDRESS then
       declare

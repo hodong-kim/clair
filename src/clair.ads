@@ -20,7 +20,7 @@ package Clair is
   -- The public API for the library is declared here (currently empty)
 private
   -- Shared C pointer conversion function for all child packages in the library
-  function to_chars_ptr is new Ada.Unchecked_Conversion (
+  function sys_addr_to_chars_ptr is new Ada.Unchecked_Conversion (
     source => System.Address,
     target => Interfaces.C.Strings.chars_ptr
   );
