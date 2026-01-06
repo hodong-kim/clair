@@ -1,5 +1,5 @@
 -- clair-signal.ads
--- Copyright (c) 2025 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.art>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -11,80 +11,85 @@
 -- WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 -- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 -- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
+--
 with Interfaces.C;
-with Clair.Types;
 with System.Storage_Elements;
-with sys_signal_h;
+with Clair.Platform;
 
 package Clair.Signal is
 
   -- A distinct type for signal numbers
-  subtype Number is Interfaces.C.int;
-  subtype Action is sys_signal_h.sigaction;
-  subtype Info   is sys_signal_h.siginfo_t;
-  subtype Set    is sys_signal_h.sigset_t;
+  type Number is new Interfaces.C.int;
+  type Flags  is new Interfaces.C.int;
+  function "or" (left, right : Flags) return Flags;
 
+  type Set is array (1 .. Clair.Platform.SIZE_OF_SIGSET)
+    of Interfaces.Unsigned_8;
+  pragma convention (c, Set);
+
+  type Action is record
+    sa_handler : System.Address;
+    sa_flags   : Interfaces.C.int;
+    sa_mask    : aliased Clair.Signal.Set;
+  end record
+    with convention => c;
+
+  for Action use record
+    sa_handler at Clair.Platform.SIGACTION_HANDLER_OFFSET
+               range 0 .. Standard'address_size - 1;
+
+    sa_flags   at Clair.Platform.SIGACTION_FLAGS_OFFSET
+               range 0 .. Interfaces.C.int'size - 1;
+
+    sa_mask    at Clair.Platform.SIGACTION_MASK_OFFSET
+               range 0 .. (Clair.Platform.SIZE_OF_SIGSET *
+                           System.Storage_Unit) - 1;
+  end record;
+
+  for Action'size use Clair.Platform.SIGACTION_SIZE * System.Storage_Unit;
+  for Action'alignment use Clair.Platform.SIGACTION_ALIGNMENT;
   -- Access type for user-registered handlers.
-  type Handler1_Access is access procedure (signo   : Number);
-  type Handler3_Access is access procedure (signo   : Number;
-                                            siginfo : access Info;
-                                            context : System.Address);
-  pragma convention (c, Handler1_Access);
-  pragma convention (c, Handler3_Access);
+  type Handler is access procedure (signo   : Number);
 
-  -- signals
-  SIGHUP    : constant := sys_signal_h.SIGHUP;
-  SIGINT    : constant := sys_signal_h.SIGINT;
-  SIGQUIT   : constant := sys_signal_h.SIGQUIT;
-  SIGILL    : constant := sys_signal_h.SIGILL;
-  SIGABRT   : constant := sys_signal_h.SIGABRT;
-  SIGFPE    : constant := sys_signal_h.SIGFPE;
-  SIGKILL   : constant := sys_signal_h.SIGKILL;
-  SIGBUS    : constant := sys_signal_h.SIGBUS;
-  SIGSEGV   : constant := sys_signal_h.SIGSEGV;
-  SIGSYS    : constant := sys_signal_h.SIGSYS;
-  SIGPIPE   : constant := sys_signal_h.SIGPIPE;
-  SIGALRM   : constant := sys_signal_h.SIGALRM;
-  SIGTERM   : constant := sys_signal_h.SIGTERM;
-  SIGURG    : constant := sys_signal_h.SIGURG;
-  SIGSTOP   : constant := sys_signal_h.SIGSTOP;
-  SIGTSTP   : constant := sys_signal_h.SIGTSTP;
-  SIGCONT   : constant := sys_signal_h.SIGCONT;
-  SIGCHLD   : constant := sys_signal_h.SIGCHLD;
-  SIGTTIN   : constant := sys_signal_h.SIGTTIN;
-  SIGTTOU   : constant := sys_signal_h.SIGTTOU;
-  SIGUSR1   : constant := sys_signal_h.SIGUSR1;
-  SIGUSR2   : constant := sys_signal_h.SIGUSR2;
+  pragma convention (c, Handler);
 
-  -- Options may be specified by setting sa_flags.
-  SA_NOCLDSTOP : constant := sys_signal_h.SA_NOCLDSTOP;
-  SA_ONSTACK   : constant := sys_signal_h.SA_ONSTACK;
-  SA_RESTART   : constant := sys_signal_h.SA_RESTART;
-  SA_RESETHAND : constant := sys_signal_h.SA_RESETHAND;
-  SA_NODEFER   : constant := sys_signal_h.SA_NODEFER;
-  SA_NOCLDWAIT : constant := sys_signal_h.SA_NOCLDWAIT;
-  SA_SIGINFO   : constant := sys_signal_h.SA_SIGINFO;
+  INTERRUPT     : constant := Clair.Platform.SIGINT;
+  TERMINATION   : constant := Clair.Platform.SIGTERM;
+  TERMINAL_STOP : constant := Clair.Platform.SIGTSTP;
+  CHILD_STATUS  : constant := Clair.Platform.SIGCHLD;
 
-  function to_action_handler is new Ada.Unchecked_Conversion
-    (source => System.Address,
-     target => Handler1_Access);
+  No_Child_Wait : constant := Clair.Platform.SA_NOCLDWAIT;
 
-  SIG_DFL : constant Handler1_Access :=
-    to_action_handler (System.Storage_Elements.to_address (0)); -- <<<<<
+  Default_Handler : constant Handler;
+  Ignore_Handler  : constant Handler;
 
-  SIG_IGN : constant Handler1_Access :=
-    to_action_handler (System.Storage_Elements.to_address (1)); -- <<<<<
+  procedure set_empty (sig_set : aliased out Set);
 
-  procedure empty_set (sig_set : aliased out Set);
+  procedure set_add   (sig_set : aliased in out Set;
+                       signo   : Number);
+
+  function is_member (Sig_Set : aliased in Set;
+                      signum  : Number) return Boolean;
+
+  procedure block (sig_set : aliased in Set;
+                   oset    : out Set);
+
+  procedure unblock (sig_set : aliased in Set;
+                     oset    : out Set);
+
+  procedure unblock (sig_set : aliased in Set);
+
+  procedure set_mask (new_set : aliased in Set);
+
+  procedure set_wait (sig_set : aliased in Set;
+                      signo   : out Number);
 
   -- wrapper for raise(3): Sends a signal to the current process
   procedure send_signal (signo : Number);
 
-  -- wrapper for sigaction(2) function
-  procedure set_action (signo      : in          Number;
-                        new_action : aliased in  Action;
-                        old_action : aliased out Action);
+  procedure set_action (signo   : Number;
+                        handler : Signal.Handler;
+                        flags   : Signal.Flags := 0);
 
   -- Atomically changes the signal mask and waits for a signal.
   -- This procedure will only return after a signal handler has been executed.
@@ -93,4 +98,14 @@ package Clair.Signal is
   -- This is a safe implementation of pause(2) using sigsuspend(2).
   procedure pause;
 
+private
+  function to_handler is new Ada.Unchecked_Conversion
+    (source => System.Address,
+     target => Handler);
+
+  Default_Handler : constant Handler :=
+    to_handler (System.Storage_Elements.To_Address (Clair.Platform.SIG_DFL));
+
+  Ignore_Handler : constant Handler :=
+    to_handler (System.Storage_Elements.To_Address (Clair.Platform.SIG_IGN));
 end Clair.Signal;

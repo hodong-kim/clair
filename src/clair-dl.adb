@@ -1,5 +1,5 @@
 -- clair-dl.adb
--- Copyright (c) 2025 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.art>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -11,13 +11,13 @@
 -- WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 -- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 -- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
+--
 with Interfaces.C;
 with Interfaces.C.Strings;
+with Clair.Exceptions;
 
 package body Clair.DL is
   use type Interfaces.C.int;
-  use type Interfaces.C.char_array;
   use type Interfaces.C.Strings.chars_ptr;
   use type System.Address;
 
@@ -26,7 +26,8 @@ package body Clair.DL is
   pragma import (c, c_dlopen, "dlopen");
 
   function c_dlsym (handle : System.Address;
-                    symbol : Interfaces.C.Strings.chars_ptr) return System.Address;
+                    symbol : Interfaces.C.Strings.chars_ptr)
+  return System.Address;
   pragma import (c, c_dlsym, "dlsym");
 
   function c_dlerror return Interfaces.C.Strings.chars_ptr;
@@ -46,16 +47,17 @@ package body Clair.DL is
   end get_dl_error;
 
   function open (path : String; mode : Integer) return Handle is
-    c_path : constant Interfaces.C.char_array := Interfaces.C.to_c (path);
-    lib : constant System.Address :=
-      c_dlopen (sys_addr_to_chars_ptr (c_path'address),
-                Interfaces.C.int (mode));
+    c_path : aliased constant Interfaces.C.char_array
+           := Interfaces.C.to_c (path);
+    lib    : System.Address;
   begin
+    lib := c_dlopen (sys_addr_to_chars_ptr (c_path'address),
+                     Interfaces.C.int(mode));
     if lib = System.NULL_ADDRESS then
-      raise Library_Load_Error with "dlopen(" & path & "," & mode'image &
-        ") failed: " & get_dl_error;
+      raise Clair.Exceptions.Library_Load_Error with
+            "dlopen(" & path & "," & mode'image & ") failed: " & get_dl_error;
     end if;
-    return Handle (lib);
+    return Handle(lib);
   end open;
 
   procedure close (lib : in out Handle) is
@@ -64,10 +66,11 @@ package body Clair.DL is
     if lib = NULL_HANDLE then
       return;
     end if;
-    retval := c_dlclose (System.Address (lib));
+    retval := c_dlclose (System.Address(lib));
 
     if retval /= 0 then
-      raise Library_Close_Error with "dlclose failed: " & get_dl_error;
+      raise Clair.Exceptions.Library_Close_Error with
+            "dlclose failed: " & get_dl_error;
     end if;
 
     lib := NULL_HANDLE;
@@ -76,8 +79,8 @@ package body Clair.DL is
   function find_symbol (lib      : in Handle;
                         sym_name : in String) return System.Address is
     sym_addr     : System.Address;
-    c_sym_name   : constant Interfaces.C.char_array :=
-                            Interfaces.C.to_c (sym_name);
+    c_sym_name   : aliased constant Interfaces.C.char_array
+                 := Interfaces.C.to_c (sym_name);
     dummy_result : Interfaces.C.Strings.chars_ptr;
   begin
     if lib = NULL_HANDLE then
@@ -88,7 +91,7 @@ package body Clair.DL is
     -- Clear any old error conditions before calling dlsym.
     dummy_result := c_dlerror;
     pragma unreferenced (dummy_result);
-    sym_addr     := c_dlsym (System.Address (lib),
+    sym_addr     := c_dlsym (System.Address(lib),
                              sys_addr_to_chars_ptr (c_sym_name'address));
     -- If dlsym returns NULL, check dlerror to see if it was a real error.
     if sym_addr = System.NULL_ADDRESS then
@@ -96,7 +99,7 @@ package body Clair.DL is
         errmsg : constant String := get_dl_error;
       begin
         if errmsg'length > 0 then
-          raise Symbol_Lookup_Error
+          raise Clair.Exceptions.Symbol_Lookup_Error
             with "dlsym lookup for '" & sym_name & "' failed: " & errmsg;
         end if;
       end;

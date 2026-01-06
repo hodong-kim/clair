@@ -1,79 +1,50 @@
-Clair - A Low-Level POSIX/C System Library for Ada
-==================================================
+Clair - System Programming Library for Ada
+===============================================================================
 
-Clair is a library that provides safe, portable, and idiomatic Ada bindings
-for common low-level POSIX/C system interfaces.
-The primary goal is to abstract away platform-specific details and unsafe
-C constructs, offering a robust foundation for systems programming in Ada.
+[ IMPORTANT NOTICE: EXPERIMENTAL VERSION ]
 
-***
-### Current Status: Development in Progress
-This library is currently **under active development**. The API may change
-before the 1.0 release. Users should be aware of potential breaking changes.
-***
+This software is currently in an experimental stage. The APIs, internal
+structures, and implementation details are subject to change without prior
+notice. It is not yet recommended for use in critical production environments.
 
-Features
+===============================================================================
+
+DESCRIPTION
+-----------
+Clair is a system programming library for the Ada programming language,
+focusing on providing type-safe and efficient abstractions for low-level
+operating system facilities.
+
+Key features include:
+  - Event Loop (currently based on kqueue for BSD/macOS)
+  - Signal Handling (RAII-based signal masking and handling)
+  - Time and Timer management
+  - Non-blocking I/O primitives
+
+BUILDING
 --------
-* Safe Wrappers: Provides type-safe Ada interfaces for POSIX and C library functions.
-* Modular Design: Includes modules for File I/O, Process Management,
-  Signal Handling, Dynamic Library Loading, Error Management, and POSIX Types.
-* Automatic Spec Generation: Uses tools to generate Ada specifications
-  directly from system headers, ensuring correctness and portability.
-* Rich Error Handling: Maps system `errno` values to a comprehensive
-  set of distinct Ada exceptions for precise error handling.
-* Simple Build System: Uses a Rakefile for easy compilation and testing.
+This project uses GNAT Project files (.gpr).
+To build the library, ensure you have a GNAT compiler installed and run:
 
-Requirements
-------------
-* GNAT (The GNAT Ada Compiler)
-* GCC (The GNU C Compiler)
-* AR (The GNU Archiver)
-* Ruby (for the build system)
-* POSIX-compliant system headers.
+    gprbuild -P clair.gpr
 
-Building the Library
---------------------
-The build process is managed by a Rakefile. The first time you run it,
-it will automatically detect and cache the paths to the required tools
-(gnatmake, gcc, ar).
+PLATFORM SUPPORT
+----------------
+Current implementation heavily relies on 'kqueue', limiting support primarily
+to BSD derivatives (FreeBSD, OpenBSD, NetBSD) and macOS (Darwin).
+Linux support (via epoll/signalfd) is planned for future releases.
 
-To build both the static and shared libraries:
-    $ rake
+COMMERCIAL SUPPORT
+------------------
+Professional support is available for enterprises and commercial projects.
+Services include:
+  - Integration assistance with legacy C/C++ or Ada systems
+  - Custom feature development and platform porting
+  - Priority bug fixes and technical consulting
 
-This will create `build/libclair.a` and `build/libclair.so`.
-
-To build and run the test suite:
-    $ rake tests
-    $ rake test_process
-
-To clean up build artifacts and the cached tool configuration:
-    $ rake clean
-
-Usage
------
-To use Clair in your project:
-1. Add the `src` directory of the Clair library to your compiler's search
-   path (e.g., using the `-I` flag with `gnatmake`).
-2. Link your application with either the static (`libclair.a`) or shared
-   (`libclair.so`) library.
-3. `with` the required Clair packages in your Ada source code, for
-   example: `with Clair.File;` or `with Clair.DL;`.
-
-Library Modules
----------------
-* Clair.Error: Manages POSIX `errno` and maps them to Ada exceptions.
-* Clair.File: Provides file descriptor operations (`open`, `close`,
-  `read`, `write`, `pipe`).
-* Clair.Process: Handles process control (`fork`, `get_pid`, `exit`).
-* Clair.Signal: Manages POSIX signals (`sigaction`, `raise`, `pause`).
-* Clair.DL: Wraps dynamic library loading functions (`dlopen`, `dlsym`).
-* Clair.Types: Defines portable POSIX types like `pid_t` and `mode_t`.
-
-License
+LICENSE
 -------
-This software is released under the 0BSD license.
-
-Copyright (C) 2019-2025 Hodong Kim
+Copyright (c) 2021-2025 Hodong Kim <hodong@nimfsoft.art>
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted.
