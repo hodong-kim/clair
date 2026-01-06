@@ -30,61 +30,28 @@ end
 
 CFLAGS = "-Wall -Werror"
 
-# --- Generated File Definitions ---
-SPECS_MAP = {
-  "#{SRC_DIR}/signal_h.ads" => "/usr/include/signal.h",
+C_GEN_MAP = {
+  "#{SRC_DIR}/clair-errno.ads"    => "#{TOOLS_DIR}/gen-clair-errno-ads",
+  "#{SRC_DIR}/clair-platform.ads" => "#{TOOLS_DIR}/gen-clair-platform-ads",
+  "#{SRC_DIR}/clair-errno-raise_from_errno.adb" => "#{TOOLS_DIR}/gen-clair-errno-raise_from_errno-adb"
 }
 
-BUILT_ADS = FileList[
-  "#{SRC_DIR}/clair-dl.ads",
-  "#{SRC_DIR}/clair-error.ads",
-  "#{SRC_DIR}/clair-file.ads",
-  "#{SRC_DIR}/clair-types.ads"
-]
-
-BUILT_PROGS = FileList[
-  "#{TOOLS_DIR}/gen-clair-dl-ads",
-  "#{TOOLS_DIR}/gen-clair-file-ads",
-  "#{TOOLS_DIR}/gen-clair-types-ads"
-]
+BUILT_ADA   = C_GEN_MAP.keys
+BUILT_TOOLS = C_GEN_MAP.values
 
 # =============================================================================
 # PART 2: FILE GENERATION RULES
 # =============================================================================
 
-file "#{SRC_DIR}/clair-error.ads" => "#{TOOLS_DIR}/gen-clair-error-ads.rb" do |ads|
-  sh "ruby #{TOOLS_DIR}/gen-clair-error-ads.rb > #{ads}"
+BUILT_TOOLS.each do |tool|
+  file tool => "#{tool}.c" do |t|
+    sh "#{CC} #{CFLAGS} #{t.source} -o #{t.name}"
+  end
 end
 
-file "#{SRC_DIR}/clair-dl.ads" => "#{TOOLS_DIR}/gen-clair-dl-ads" do |ads|
-  sh "#{TOOLS_DIR}/gen-clair-dl-ads > #{ads}"
-end
-
-file "#{TOOLS_DIR}/gen-clair-dl-ads" => "#{TOOLS_DIR}/gen-clair-dl-ads.c" do |t|
-  sh "#{CC} #{CFLAGS} #{t.source} -o #{t.name}"
-end
-
-file "#{SRC_DIR}/clair-file.ads" => "#{TOOLS_DIR}/gen-clair-file-ads" do |ads|
-  sh "#{TOOLS_DIR}/gen-clair-file-ads > #{ads}"
-end
-
-file "#{TOOLS_DIR}/gen-clair-file-ads" => "#{TOOLS_DIR}/gen-clair-file-ads.c" do |t|
-  sh "#{CC} #{CFLAGS} #{t.source} -o #{t.name}"
-end
-
-file "#{SRC_DIR}/clair-types.ads" => "#{TOOLS_DIR}/gen-clair-types-ads" do |ads|
-  sh "#{TOOLS_DIR}/gen-clair-types-ads > #{ads}"
-end
-
-file "#{TOOLS_DIR}/gen-clair-types-ads" => "#{TOOLS_DIR}/gen-clair-types-ads.c" do |t|
-  sh "#{CC} #{CFLAGS} #{t.source} -o #{t.name}"
-end
-
-# Rule to generate Ada specs from C headers
-SPECS_MAP.each do |ads, header|
-  file ads => header do |t|
-    sh "cd #{SRC_DIR} && #{GCC} -c -fdump-ada-spec " \
-       "-D_POSIX_C_SOURCE=200809L #{t.prerequisites.first}"
+C_GEN_MAP.each do |target, tool|
+  file target => tool do
+    sh "#{tool} > #{target}"
   end
 end
 
@@ -92,24 +59,40 @@ end
 # PART 3: TASKS
 # =============================================================================
 
-desc "Generate all Ada spec files (default)"
-task :default => :gen_specs
+desc "Generate all Ada files (default)"
+task :default => :build
 
-desc "Generate all Ada spec files"
-task :gen_specs => BUILT_ADS + SPECS_MAP.keys
+desc "Generate all Ada files"
+task :gen => BUILT_ADA
 
 desc "Generate specs and build library"
-task :build => :gen_specs do
-  sh "gprbuild -P clair.gpr"
-  sh "gprbuild -P tests/tests_clair.gpr"
+task :build, [:os_name] => :gen do |t, args|
+  os_name = args[:os_name]
+
+  if os_name.nil?
+    opt = ""
+  else
+    opt = "-XOS=#{os_name}"
+  end
+
+  sh "gprbuild #{opt} -P clair.gpr"
+  sh "gprbuild #{opt} -P tests/tests_clair.gpr"
 end
 
 task :clean do
   puts "===> Cleaning gprbuild artifacts..."
-  sh "gprclean -r -P clair.gpr"
-  sh "gprclean -r -P tests/tests_clair.gpr"
+
+  begin
+    sh "gprclean -r -P clair.gpr"
+    sh "gprclean -r -P tests/tests_clair.gpr"
+  rescue RuntimeError
+    puts "Warning: gprclean failed (likely due to missing source files)."
+    puts "         Proceeding with forced cleanup."
+  end
+
   puts "Cleaning generated files..."
-  rm_f FileList[ CONFIG, "mkmf.log", "#{SRC_DIR}/*_h.ads" ]
-  rm_f BUILT_ADS
-  rm_f BUILT_PROGS
+  rm_f FileList[ CONFIG, "mkmf.log" ]
+  rm_f BUILT_ADA
+  rm_f BUILT_TOOLS
+  rm_rf ["bin", "lib", "obj"]
 end

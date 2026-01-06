@@ -1,5 +1,5 @@
 /*
- * @file clair-error-c.c
+ * @file clair-errno-c.c
  * @brief C standard library wrapper functions for Ada bindings.
  *
  * Copyright (c) 2025 Hodong Kim <hodong@nimfsoft.art>
@@ -35,6 +35,7 @@
 - * standardized interface. This is essential for writing portable code or
  * creating reliable bindings for other languages like Ada.
  */
+#undef _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L
 
 #include <errno.h>
@@ -60,9 +61,22 @@
  * details, providing a stable and reliable interface to retrieve the current
  * thread's `errno` value.
  */
-int clair_error_get_errno (void)
+int clair_errno_get_errno (void)
 {
   return errno;
+}
+
+/**
+ * @brief Sets the current value of the `errno` variable.
+ *
+ * @param value The value to set `errno` to.
+ *
+ * @note Like the getter, this wrapper ensures portability by handling
+ * the underlying macro expansion of `errno` correctly on the C side.
+ */
+void clair_errno_set_errno (int value)
+{
+  errno = value;
 }
 
 /**
@@ -100,7 +114,7 @@ int clair_error_get_errno (void)
     #error "Error: glibc version 2.13 or later is required."
   #endif
 #endif
-int clair_error_strerror_r (int errnum, char* buf, size_t buflen)
+int clair_errno_strerror_r (int errnum, char* buf, size_t buflen)
 {
   return strerror_r (errnum, buf, buflen);
 }

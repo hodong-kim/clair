@@ -11,18 +11,25 @@
 -- WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 -- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 -- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
+--
 with System;
 with Interfaces.C.Strings;
 with Ada.Unchecked_Conversion;
 
 package Clair is
-  -- The public API for the library is declared here (currently empty)
+  pragma preelaborate;
 private
+  Max_EINTR_Retries : constant := 10;
   -- Shared C pointer conversion function for all child packages in the library
   function sys_addr_to_chars_ptr is new Ada.Unchecked_Conversion (
     source => System.Address,
     target => Interfaces.C.Strings.chars_ptr
   );
+
+  function uint_to_int is new Ada.Unchecked_Conversion
+    (source => Interfaces.C.unsigned, target => Interfaces.C.int);
+
+  function int_to_uint is new Ada.Unchecked_Conversion
+    (source => Interfaces.C.int, target => Interfaces.C.unsigned);
 
 end Clair;

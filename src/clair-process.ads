@@ -11,9 +11,9 @@
 -- WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 -- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 -- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
+--
 with Clair.Signal;
-with Clair.Types;
+with Clair.Platform;
 
 package Clair.Process is
 
@@ -34,16 +34,24 @@ package Clair.Process is
   type Fork_Result (status : Fork_Status) is record
     case status is
       when Parent =>
-        child_pid : Clair.Types.pid_t;
+        child_pid : Clair.Platform.pid_t;
       when Child =>
         null;
     end case;
   end record;
 
-  function get_pid return Clair.Types.pid_t;
-  function set_sid return Clair.Types.pid_t;
+  function get_pid return Clair.Platform.pid_t;
+  function set_sid return Clair.Platform.pid_t;
   function fork return Fork_Result;
-  procedure send_signal_to (pid   : Clair.Types.pid_t;
+  procedure send_signal_to (pid   : Clair.Platform.pid_t;
                             signo : Clair.Signal.Number);
 
+  -- stay_in_current_dir: If True, the current working directory is maintained.
+  --                      If False, the working directory is changed to the root
+  --                      ("/").
+  -- keep_standard_io:    If True, standard I/O streams (stdin, stdout, stderr)
+  --                      are preserved.
+  --                      If False, they are redirected to /dev/null.
+  procedure daemonize (stay_in_current_dir : Boolean := False;
+                       keep_standard_io    : Boolean := False);
 end Clair.Process;
