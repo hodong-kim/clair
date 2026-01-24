@@ -1,5 +1,5 @@
 -- clair.gpr
--- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -85,7 +85,7 @@ library project Clair is
                                       "-gnat2022",
                                       "-gnatwa",
                                       "-gnatwe",
-                                      "-gnaty2M80");
+                                      "-gnaty2behikM80");
     for Default_Switches ("C")   use ("-fPIC",
                                       "-Wall",
                                       "-Werror");
@@ -99,10 +99,6 @@ library project Clair is
         for Linker_Options use ("-ljemalloc");
     end case;
   end Linker;
-
-  package Binder is
-    for Default_Switches ("Ada") use ("-l");
-  end Binder;
 
   package Pretty_Printer is
     for Default_Switches ("ada") use (

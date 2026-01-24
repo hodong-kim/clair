@@ -1,5 +1,5 @@
 -- clair-network.adb
--- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -197,14 +197,14 @@ package body Clair.Network is
       -- ENOBUFS: "Transient congestion" (FreeBSD Manual)
       elsif error_code = Clair.Platform.EAGAIN or else
             error_code = Clair.Platform.EWOULDBLOCK or else
-            error_code = Clair.Platform.ENOBUFS then
-
+            error_code = Clair.Platform.ENOBUFS
+      then
         Clair.Errno.raise_from_errno (error_code,
                                       "Resource temporarily unavailable");
       -- [Case 3] Connection lost -> Raise exception
       elsif error_code = Clair.Platform.EPIPE or else
-            error_code = Clair.Platform.ECONNREFUSED then
-
+            error_code = Clair.Platform.ECONNREFUSED
+      then
         Clair.Errno.raise_from_errno (error_code,
                                       "Connection closed or refused");
       -- [Case 4] Fatal error

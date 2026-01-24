@@ -1,5 +1,5 @@
 -- clair-file.adb
--- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -12,35 +12,17 @@
 -- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 -- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 --
-with System;
 with Clair.Errno;
 with Clair.Exceptions;
+with Ada.Unchecked_Conversion;
 
 package body Clair.File is
+
   use type Interfaces.C.int;
-  use type Clair.Platform.ssize_t;
 
-  -- C functions from <unistd.h> are now imported directly.
-  function c_close (fd : Interfaces.C.int) return Interfaces.C.int;
-  pragma import (c, c_close, "close");
-
-  function c_read (fd    : Interfaces.C.int;
-                   buf   : System.Address;
-                   count : Interfaces.C.size_t) return Clair.Platform.ssize_t;
-  pragma import (c, c_read, "read");
-
-  function c_write (fd    : Interfaces.C.int;
-                    buf   : System.Address;
-                    count : Interfaces.C.size_t) return Clair.Platform.ssize_t;
-  pragma import (c, c_write, "write");
-
-  function c_dup (oldfd : Interfaces.C.int) return Interfaces.C.int;
-  pragma import (c, c_dup, "dup");
-
-  function c_dup2 (oldfd : Interfaces.C.int;
-                   newfd : Interfaces.C.int) return Interfaces.C.int;
-  pragma import (c, c_dup2, "dup2");
-
+  -----------------------------------------------------------------------------
+  -- C Imports
+  -----------------------------------------------------------------------------
   function c_open2 (path  : Interfaces.C.char_array;
                     flags : Interfaces.C.int) return Descriptor;
   function c_open3 (path  : Interfaces.C.char_array;
@@ -62,17 +44,17 @@ package body Clair.File is
   function c_unlink (pathname : Interfaces.C.char_array) return Interfaces.C.int
   with import, convention => c, external_name => "unlink";
 
-  -- Version with two arguments (Void Argument)
-  -- Usage: Used to retrieve values such as F_GETFL, F_GETFD, F_GETOWN, etc.
-  function fcntl2 (fd  : Descriptor;
-                   cmd : Interfaces.C.int) return Interfaces.C.int;
-  pragma import (c, fcntl2, "fcntl");
-
+  -----------------------------------------------------------------------------
+  -- Helpers
+  -----------------------------------------------------------------------------
   function flags_to_uint is new Ada.Unchecked_Conversion
     (source => Flags, target => Interfaces.C.unsigned);
 
   function uint_to_flags is new Ada.Unchecked_Conversion
     (source => Interfaces.C.unsigned, target => Flags);
+
+  function uint_to_int is new Ada.Unchecked_Conversion
+    (source => Interfaces.C.unsigned, target => Interfaces.C.int);
 
   function "or" (left, right : Flags) return Flags is
     use type Interfaces.C.unsigned;
@@ -90,6 +72,10 @@ package body Clair.File is
   begin
     Clair.Errno.raise_from_errno (errno_code, error_msg);
   end handle_open_error;
+
+  -----------------------------------------------------------------------------
+  -- Implementations
+  -----------------------------------------------------------------------------
 
   function open (path : String;  flags : File.Flags) return Descriptor is
     new_fd      : Descriptor;
@@ -165,164 +151,6 @@ package body Clair.File is
     return new_fd;
   end open;
 
-  procedure close (fd : in Descriptor) renames Clair.IO.close;
-
-  function read (fd     : in Descriptor;
-                 buffer : in out System.Storage_Elements.Storage_Array)
-  return Natural is
-    bytes_read  : Clair.Platform.ssize_t;
-    retry_count : Natural := 0;
-  begin
-    loop
-      bytes_read :=
-        c_read (Interfaces.C.int(fd), buffer'address, buffer'length);
-
-      -- [Success or EOF]
-      -- bytes_read > 0: Data read
-      -- bytes_read = 0: EOF (End Of File) reached -> Normal termination
-      if bytes_read >= 0 then
-        exit;
-      end if;
-
-      -- [Error handling]
-      declare
-        errno_code : constant Interfaces.C.int := Clair.Errno.get_errno;
-      begin
-        if errno_code = Clair.Errno.EINTR then
-          retry_count := retry_count + 1;
-          if retry_count > Clair.Max_EINTR_Retries then
-            raise Clair.Exceptions.Interrupted_System_Call with
-              "Clair.File.read: Aborted after " &
-              Clair.Max_EINTR_Retries'image &
-              " consecutive EINTR signals on fd " & fd'image;
-          end if;
-        else
-          declare
-            error_msg : constant String :=
-              Clair.Errno.format_posix_error_message
-                (errno_code    => errno_code,
-                 function_name => "Clair.File.read",
-                 context_info  => "on fd " & fd'image);
-          begin
-            Clair.Errno.raise_from_errno (errno_code, error_msg);
-          end;
-        end if;
-      end;
-    end loop;
-
-    return Natural(bytes_read);
-  end read;
-
-  function write (fd     : in Descriptor;
-                  buffer : in System.Storage_Elements.Storage_Array)
-  return Natural is
-    bytes_written : Clair.Platform.ssize_t;
-    retry_count   : Natural := 0;
-  begin
-    loop
-      bytes_written := c_write (Interfaces.C.int(fd),
-                                buffer'address,
-                                buffer'length);
-
-      if bytes_written /= -1 then
-        exit;
-      end if;
-
-      declare
-        errno_code : constant Interfaces.C.int := Clair.Errno.get_errno;
-      begin
-        if errno_code = Clair.Errno.EINTR then
-          retry_count := retry_count + 1;
-          if retry_count > Clair.Max_EINTR_Retries then
-            raise Clair.Exceptions.Interrupted_System_Call with
-              "Clair.File.write: Aborted after " &
-              Clair.Max_EINTR_Retries'image &
-              " consecutive EINTR signals on fd " & fd'image;
-          end if;
-        else
-          declare
-            error_msg : constant String :=
-              Clair.Errno.format_posix_error_message
-                (errno_code    => errno_code,
-                 function_name => "Clair.File.write",
-                 context_info  => "on fd " & fd'image);
-          begin
-            Clair.Errno.raise_from_errno (errno_code, error_msg);
-          end;
-        end if;
-      end;
-    end loop;
-
-    return Natural(bytes_written);
-  end write;
-
-  function duplicate (fd : in Descriptor) return Descriptor is
-    new_fd : constant File.Descriptor :=
-      File.Descriptor(c_dup (Interfaces.C.int(fd)));
-  begin
-    if new_fd = -1 then
-      declare
-        errno_code : constant Interfaces.C.int := Clair.Errno.get_errno;
-        error_msg  : constant String :=
-          Clair.Errno.format_posix_error_message
-            (errno_code    => errno_code,
-             function_name => "Clair.File.duplicate",
-             context_info  => "on fd " & fd'image);
-      begin
-        Clair.Errno.raise_from_errno (errno_code, error_msg);
-      end;
-    end if;
-
-    return new_fd;
-  end duplicate;
-
-function duplicate_to (fd     : in Descriptor;
-                       new_fd : Descriptor) return Descriptor is
-    result_fd   : Descriptor;
-    retry_count : Natural := 0;
-  begin
-    loop
-      result_fd :=
-        Descriptor(c_dup2 (Interfaces.C.int(fd), Interfaces.C.int(new_fd)));
-      if result_fd /= -1 then
-        -- Success
-        exit;
-      end if;
-
-      -- An error occurred (result_fd = -1), check errno.
-      declare
-        errno_code : constant Interfaces.C.int := Clair.Errno.get_errno;
-      begin
-        if errno_code = Clair.Errno.EINTR then
-          -- Interrupted by a signal, prepare to retry.
-          retry_count := retry_count + 1;
-          if retry_count > Clair.Max_EINTR_Retries then
-            raise Clair.Exceptions.Interrupted_System_Call with
-              "Clair.File.duplicate_to: Aborted after " &
-              Clair.Max_EINTR_Retries'image &
-              " consecutive EINTR signals for fd " & fd'image & " to " &
-              new_fd'image;
-          end if;
-        else
-          -- A real, unrecoverable error occurred.
-          declare
-            error_msg : constant String :=
-              Clair.Errno.format_posix_error_message
-                (errno_code    => errno_code,
-                 function_name => "Clair.File.duplicate_to",
-                 context_info  => "from fd " & fd'image &
-                                  " to new_fd " & new_fd'image);
-          begin
-            Clair.Errno.raise_from_errno (errno_code, error_msg);
-          end;
-        end if;
-      end;
-    end loop;
-
-    return result_fd;
-
-  end duplicate_to;
-
   -- The umask() system call is always successful.
   function umask (new_mask : Clair.Platform.mode_t)
   return Clair.Platform.mode_t is
@@ -333,50 +161,9 @@ function duplicate_to (fd     : in Descriptor;
     return c_umask (new_mask);
   end umask;
 
-  -- Ensure that standard I/O descriptors (0, 1, 2) are open.
-  -- If they are closed, redirect them to /dev/null.
-  procedure ensure_standard_descriptors is
-    null_fd : Descriptor;
-    flags   : Interfaces.C.int;
-    retval  : Interfaces.C.int;
-    pragma unreferenced (retval);
-  begin
-    -- Open /dev/null once.
-    -- Direct call to c_open2 (prevents exceptions).
-    null_fd := c_open2 (Interfaces.C.to_c ("/dev/null"), O_RDWR);
-
-    if null_fd = INVALID_DESCRIPTOR then
-      -- If open fails, no further action can be taken,
-      -- so the result is ignored.
-      return;
-    end if;
-
-    for fd in 0 .. 2 loop
-      -- Use fcntl to check if the file descriptor is valid (open).
-      -- If F_GETFL returns -1 and errno is EBADF, the descriptor is closed.
-      flags := fcntl2 (Descriptor(fd), F_GETFL);
-
-      if flags = -1 and then Clair.Errno.get_errno = Clair.Errno.EBADF then
-        -- If closed, duplicate the previously opened null_fd to this slot (fd).
-        -- dup2 copies the file descriptor to the specified fd number.
-        -- Direct call to c_dup2 (prevents exceptions, ignores failure).
-        retval := c_dup2 (Interfaces.C.int(null_fd), Interfaces.C.int(fd));
-        -- If dup2 fails, no further action can be taken,
-        -- so the result is ignored.
-      end if;
-    end loop;
-
-    -- Close null_fd if it is greater than 2. (i.e., if it was opened as
-    -- a temporary fd and not used to fill 0, 1, or 2).
-    if null_fd > 2 then
-      -- Direct call to c_close instead of Ada wrapper (prevents exceptions).
-      retval := c_close (Interfaces.C.int(null_fd));
-    end if;
-  end ensure_standard_descriptors;
-
-  procedure lock (fd       : Descriptor;
-                  kind     : Lock_Kind := Exclusive;
-                  blocking : Boolean   := False)
+  procedure lock (fd        : Descriptor;
+                  kind      : Lock_Kind := Exclusive;
+                  blocking  : Boolean   := False)
   is
     use type Interfaces.C.unsigned;
 
@@ -444,7 +231,7 @@ function duplicate_to (fd     : in Descriptor;
     end loop;
   end unlock;
 
-  procedure truncate (fd     : Descriptor;
+  procedure truncate (fd      : Descriptor;
                       length : Ada.Streams.Stream_Element_Offset := 0) is
   begin
     if c_ftruncate (Interfaces.C.int(fd), Off_T(length)) = -1 then

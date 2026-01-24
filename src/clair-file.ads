@@ -1,5 +1,5 @@
 -- clair-file.ads
--- Copyright (c) 2025 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -13,21 +13,18 @@
 -- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 --
 with Interfaces.C;
-with System.Storage_Elements;
 with Clair.Platform;
 with Ada.Streams;
 with Clair.IO;
 
 package Clair.File is
+
   use type Clair.IO.Descriptor;
   subtype Descriptor is Clair.IO.Descriptor;
 
   type Flags is new Interfaces.C.int;
   function "or" (left, right : Flags) return Flags;
 
-  INVALID_DESCRIPTOR : Descriptor := -1;
-
-  -- flags for open(2)
   O_RDONLY    : constant := Clair.Platform.O_RDONLY;
   O_WRONLY    : constant := Clair.Platform.O_WRONLY;
   O_RDWR      : constant := Clair.Platform.O_RDWR;
@@ -46,9 +43,9 @@ package Clair.File is
   O_CLOEXEC   : constant := Clair.Platform.O_CLOEXEC;
   O_DSYNC     : constant := Clair.Platform.O_DSYNC;
 
-  F_GETFL    : constant := Clair.Platform.F_GETFL;
-  F_SETFL    : constant := Clair.Platform.F_SETFL;
-  FD_CLOEXEC : constant := Clair.Platform.FD_CLOEXEC;
+  F_GETFL     : constant := Clair.Platform.F_GETFL;
+  F_SETFL     : constant := Clair.Platform.F_SETFL;
+  FD_CLOEXEC  : constant := Clair.Platform.FD_CLOEXEC;
 
   function open (path  : String;
                  flags : File.Flags) return Descriptor;
@@ -56,35 +53,8 @@ package Clair.File is
                  flags : File.Flags;
                  mode  : Clair.Platform.mode_t) return Descriptor;
 
-  procedure close (fd : in Descriptor);
-
-  function read (fd     : in Descriptor;
-                 buffer : in out System.Storage_Elements.Storage_Array)
-  return Natural;
-
-  function write (fd     : in Descriptor;
-                  buffer : in System.Storage_Elements.Storage_Array)
-  return Natural;
-
-  function c_read (fd      : in     Descriptor;
-                   buffer  : in out Interfaces.C.char_array;
-                   n_bytes : Interfaces.C.size_t) return Clair.Platform.ssize_t;
-  pragma import (c, c_read, "read");
-
-  function c_write (fd      : in Descriptor;
-                    buffer  : in Interfaces.C.char_array;
-                    n_bytes : Interfaces.C.size_t)
-  return Clair.Platform.ssize_t;
-  pragma import (c, c_write, "write");
-
-  function duplicate    (fd : in Descriptor) return Descriptor;
-  function duplicate_to (fd     : in Descriptor;
-                         new_fd : in File.Descriptor) return Descriptor;
-
   function umask (new_mask : Clair.Platform.mode_t)
   return Clair.Platform.mode_t;
-
-  procedure ensure_standard_descriptors;
 
   type Lock_Kind is (Shared, Exclusive);
   for  Lock_Kind use (

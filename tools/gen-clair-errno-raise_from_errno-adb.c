@@ -1,6 +1,6 @@
 /*
  * gen-clair-errno-raise_from_errno-adb.c
- * Copyright (C) 2025 Hodong Kim <hodong@nimfsoft.art>
+ * Copyright (C) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.
@@ -25,7 +25,7 @@ bool is_freebsd = false;
 #endif
 
 const char* header = R"(-- clair-errno-raise_from_errno.adb
--- Copyright (c) 2025 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -70,7 +70,7 @@ int main ()
 
     printf ("    when %-15s => -- %d\n", errno_map[i].name,
                                          errno_map[i].value);
-    printf ("      raise Clair.Exceptions.%s \n", errno_map[i].exp);
+    printf ("      raise Clair.Exceptions.%s\n", errno_map[i].exp);
     puts   ("            with context_info;");
   }
 

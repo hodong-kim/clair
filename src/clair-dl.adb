@@ -1,5 +1,5 @@
 -- clair-dl.adb
--- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -21,12 +21,12 @@ package body Clair.DL is
   use type Interfaces.C.Strings.chars_ptr;
   use type System.Address;
 
-  function c_dlopen (path : Interfaces.C.Strings.chars_ptr;
+  function c_dlopen (path : Interfaces.C.char_array;
                      mode : Interfaces.C.int) return System.Address;
   pragma import (c, c_dlopen, "dlopen");
 
   function c_dlsym (handle : System.Address;
-                    symbol : Interfaces.C.Strings.chars_ptr)
+                    symbol : Interfaces.C.char_array)
   return System.Address;
   pragma import (c, c_dlsym, "dlsym");
 
@@ -51,8 +51,7 @@ package body Clair.DL is
            := Interfaces.C.to_c (path);
     lib    : System.Address;
   begin
-    lib := c_dlopen (sys_addr_to_chars_ptr (c_path'address),
-                     Interfaces.C.int(mode));
+    lib := c_dlopen (c_path, Interfaces.C.int(mode));
     if lib = System.NULL_ADDRESS then
       raise Clair.Exceptions.Library_Load_Error with
             "dlopen(" & path & "," & mode'image & ") failed: " & get_dl_error;
@@ -81,7 +80,6 @@ package body Clair.DL is
     sym_addr     : System.Address;
     c_sym_name   : aliased constant Interfaces.C.char_array
                  := Interfaces.C.to_c (sym_name);
-    dummy_result : Interfaces.C.Strings.chars_ptr;
   begin
     if lib = NULL_HANDLE then
       raise Program_Error
@@ -89,10 +87,12 @@ package body Clair.DL is
     end if;
 
     -- Clear any old error conditions before calling dlsym.
-    dummy_result := c_dlerror;
-    pragma unreferenced (dummy_result);
-    sym_addr     := c_dlsym (System.Address(lib),
-                             sys_addr_to_chars_ptr (c_sym_name'address));
+    -- Since dlerror returns a pointer (which is technically an integer-like
+    -- type in usage) but implies side effects, we just call it and ignore the
+    -- result.
+    if c_dlerror /= Interfaces.C.Strings.NULL_PTR then null; end if;
+
+    sym_addr := c_dlsym (System.Address (lib), c_sym_name);
     -- If dlsym returns NULL, check dlerror to see if it was a real error.
     if sym_addr = System.NULL_ADDRESS then
       declare

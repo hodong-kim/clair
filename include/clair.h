@@ -1,6 +1,6 @@
 /*
  * clair.h
- * Copyright (C) 2021-2026 Hodong Kim <hodong@nimfsoft.art>
+ * Copyright (C) 2021-2026 Hodong Kim <hodong@nimfsoft.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.

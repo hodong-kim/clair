@@ -1,5 +1,5 @@
 -- clair-event_loop.adb
--- Copyright (c) 2021-2026 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2021-2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -14,11 +14,11 @@
 --
 with Ada.Unchecked_Conversion;
 with Ada.Unchecked_Deallocation;
+with Ada.Exceptions;
+with System.Storage_Elements;
 with Clair.Errno;
 with Clair.Log;
 with Clair.Exceptions;
-with Ada.Exceptions;
-with System.Storage_Elements;
 
 package body Clair.Event_Loop is
   use type Interfaces.C.short;
@@ -108,7 +108,7 @@ package body Clair.Event_Loop is
   procedure free_source (src : Handle) is
     use type System.Storage_Elements.Storage_Offset;
   begin
-    Clair.Arena.deallocate (source_pool,
+    Clair.Arena.deallocate (arena_pool,
                             handle_to_addr (src),
                             src.all'size / System.Storage_Unit,
                             System.Storage_Unit);
@@ -143,8 +143,8 @@ package body Clair.Event_Loop is
       Clair.Errno.raise_from_errno (Clair.Errno.get_errno,
                                     "Failed to create kqueue instance");
     end if;
-    Clair.Arena.initialize (source_pool);
-    self.fd := Clair.File.Descriptor(fd);
+    Clair.Arena.initialize (arena_pool);
+    self.fd := Clair.IO.Descriptor(fd);
     self.is_running := False;
     self.cached_timeout := INFINITE;
   end initialize;
@@ -182,16 +182,16 @@ package body Clair.Event_Loop is
   end unlink_active;
 
   procedure finalize (self : in out Context) is
-    use type Clair.File.Descriptor;
+    use type Clair.IO.Descriptor;
     unused  : Interfaces.C.int;
     pragma unreferenced (unused);
     current : Handle;
     next    : Handle;
   begin
-    if self.fd /= Clair.File.INVALID_DESCRIPTOR then
+    if self.fd /= Clair.IO.INVALID_DESCRIPTOR then
       quit (self);
       unused := close (Interfaces.C.int(self.fd));
-      self.fd := Clair.File.INVALID_DESCRIPTOR;
+      self.fd := Clair.IO.INVALID_DESCRIPTOR;
     end if;
 
     current := self.garbage_head;
@@ -222,7 +222,7 @@ package body Clair.Event_Loop is
     end loop;
     self.active_head := null;
     self.active_tail := null;
-    Clair.Arena.finalize (source_pool);
+    Clair.Arena.finalize (arena_pool);
   end finalize;
 
   -- Allocate memory on the heap, initialize, and return the pointer
@@ -283,7 +283,8 @@ package body Clair.Event_Loop is
     if actual_timeout > 0 then
       -- Measure current time
       if Clair.Time.get_time (Clair.Platform.CLOCK_MONOTONIC,
-                              current_ts'address) /= 0 then
+                              current_ts'address) /= 0
+      then
         Clair.Errno.raise_from_errno (
           Clair.Errno.get_errno,
           "iterate: clock_gettime failed at initialization"
@@ -344,7 +345,8 @@ package body Clair.Event_Loop is
 
             -- Recalculate remaining time
             if Clair.Time.get_time (Clair.Platform.CLOCK_MONOTONIC,
-                                    current_ts'address) /= 0 then
+                                    current_ts'address) /= 0
+            then
               Clair.Errno.raise_from_errno (
                 Clair.Errno.get_errno, "clock_gettime failed inside EINTR"
               );
@@ -414,7 +416,7 @@ package body Clair.Event_Loop is
                     end if;
 
                     src.io_cb (src,
-                               Clair.File.Descriptor(src.ident),
+                               Clair.IO.Descriptor(src.ident),
                                out_mask,
                                src.user_data);
 
@@ -544,7 +546,8 @@ package body Clair.Event_Loop is
         if actual_timeout > 0 then
           -- Measure current time again
           if Clair.Time.get_time (Clair.Platform.CLOCK_MONOTONIC,
-                                  current_ts'address) = 0 then
+                                  current_ts'address) = 0
+          then
             remaining_ts := deadline_ts - current_ts;
 
             if remaining_ts.tv_sec >= 0 then
@@ -629,7 +632,7 @@ package body Clair.Event_Loop is
 
   function add_watch (
     self      : in out Context;
-    fd        : Clair.File.Descriptor;
+    fd        : Clair.IO.Descriptor;
     events    : Event_Mask;
     callback  : IO_Callback;
     user_data : System.Address := System.NULL_ADDRESS) return Handle
@@ -712,7 +715,8 @@ package body Clair.Event_Loop is
         -- With EV_RECEIPT, EV_ERROR is ALWAYS set.
         -- We check 'data' to see if it's a real error (data != 0).
         if (results(i).flags and EV_ERROR) /= 0
-          and then results(i).data /= 0 then
+          and then results(i).data /= 0
+        then
           has_error := True;
 
           if results(i).filter = EVFILT_READ then
@@ -1011,7 +1015,7 @@ package body Clair.Event_Loop is
     src.ident      := Clair.Platform.uintptr_t(signum);
     src.sig_cb     := callback;
     src.user_data  := user_data;
-    src.sig_fd     := Clair.File.INVALID_DESCRIPTOR;
+    src.sig_fd     := Clair.IO.INVALID_DESCRIPTOR;
 
     -- Check the previous signal mask to determine if this signal was
     -- already blocked before our registration.

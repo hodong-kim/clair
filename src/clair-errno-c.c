@@ -2,7 +2,7 @@
  * @file clair-errno-c.c
  * @brief C standard library wrapper functions for Ada bindings.
  *
- * Copyright (c) 2025 Hodong Kim <hodong@nimfsoft.art>
+ * Copyright (c) 2025 Hodong Kim <hodong@nimfsoft.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.

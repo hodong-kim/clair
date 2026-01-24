@@ -26,7 +26,7 @@ project Tests_Clair is
                                       "-gnat2022",
                                       "-gnatwa",
                                       "-gnatwe",
-                                      "-gnaty2M80");
+                                      "-gnaty2behikM80");
     for Default_Switches ("C")   use ("-fPIC",
                                       "-I../../include",
                                       "-Wall",

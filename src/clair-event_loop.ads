@@ -1,5 +1,5 @@
 -- clair-event_loop.ads
--- Copyright (c) 2021-2026 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2021-2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -12,13 +12,13 @@
 -- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 -- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 --
-with Clair.File;
 with Interfaces.C;
 with System;
 with Clair.Signal;
 with Clair.Platform;
 with Clair.Time;
 with Clair.Arena;
+with Clair.IO;
 
 package Clair.Event_Loop is
   use type Interfaces.C.int;
@@ -43,7 +43,7 @@ package Clair.Event_Loop is
 
   type IO_Callback is access procedure (
     io        : Handle;
-    fd        : Clair.File.Descriptor;
+    fd        : Clair.IO.Descriptor;
     events    : Event_Mask;
     user_data : System.Address)
   with convention => c;
@@ -89,7 +89,7 @@ package Clair.Event_Loop is
 
   function add_watch (
     self      : in out Context;
-    fd        : Clair.File.Descriptor;
+    fd        : Clair.IO.Descriptor;
     events    : Event_Mask;
     callback  : IO_Callback;
     user_data : System.Address := System.NULL_ADDRESS
@@ -126,11 +126,11 @@ package Clair.Event_Loop is
 private
 
   -- Dedicated memory pool for `Source` objects
-  source_pool : Clair.Arena.Pool;
+  arena_pool : Clair.Arena.Pool;
 
   type Source;
   type Handle is access all Source;
-  for Handle'storage_pool use Source_Pool;
+  for Handle'storage_pool use arena_pool;
 
   pragma convention (c, Handle);
 
@@ -193,13 +193,13 @@ private
         -- [Linux Compatibility]
         -- Stores the fd created by signalfd (required for epoll/close).
         -- Unused in kqueue (BSD) but kept for structural consistency.
-        sig_fd  : Clair.File.Descriptor := Clair.File.INVALID_DESCRIPTOR;
+        sig_fd  : Clair.IO.Descriptor := Clair.IO.INVALID_DESCRIPTOR;
         originally_blocked : Boolean := False;
     end case;
   end record;
 
   type Context is limited record
-    fd              : Clair.File.Descriptor := Clair.File.INVALID_DESCRIPTOR;
+    fd              : Clair.IO.Descriptor := Clair.IO.INVALID_DESCRIPTOR;
     is_running      : Boolean  := False;
     -- Cached timeout (64-bit integer, used for comparison)
     cached_timeout  : Milliseconds := INFINITE;

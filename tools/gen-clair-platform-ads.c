@@ -1,6 +1,6 @@
 /*
  * gen-clair-log-platform-ads.c
- * Copyright (C) 2025,2026 Hodong Kim <hodong@nimfsoft.art>
+ * Copyright (C) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.
@@ -31,6 +31,7 @@
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <sys/file.h>
+#include <sys/eventfd.h>
 #include <sys/un.h>
 #include <inttypes.h>
 
@@ -58,7 +59,7 @@
 /* * Header & Footer
  */
 const char* header = R"(-- clair-platform.ads
--- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.art>
+-- Copyright (c) 2025,2026 Hodong Kim <hodong@nimfsoft.com>
 --
 -- Permission to use, copy, modify, and/or distribute this software for any
 -- purpose with or without fee is hereby granted.
@@ -116,6 +117,9 @@ static const struct type_entry system_types[] = {
   { "uintptr_t",   GET_ADA_TYPE_NAME ((uintptr_t)   0) },
   { "int64_t",     GET_ADA_TYPE_NAME ((int64_t)     0) },
   { "uint64_t",    GET_ADA_TYPE_NAME ((uint64_t)    0) },
+  { "uint8_t",     GET_ADA_TYPE_NAME ((uint8_t)     0) },
+  { "uint32_t",    GET_ADA_TYPE_NAME ((uint32_t)    0) },
+  { "int32_t",     GET_ADA_TYPE_NAME ((int32_t)     0) },
   { "mode_t",      GET_ADA_TYPE_NAME ((mode_t)      0) },
   { "pid_t",       GET_ADA_TYPE_NAME ((pid_t)       0) },
   { "ssize_t",     GET_ADA_TYPE_NAME ((ssize_t)     0) },
@@ -304,6 +308,13 @@ static const struct size_const sockaddr_un_sizes[] = {
   { "SOCKADDR_UN_SUN_FAMILY_OFFSET", offsetof(struct sockaddr_un, sun_family) },
   { "SOCKADDR_UN_SUN_PATH_OFFSET",   offsetof(struct sockaddr_un, sun_path)   },
   { "SOCKADDR_UN_PATH_LENGTH", sizeof (((struct sockaddr_un*) 0)->sun_path)   }
+};
+
+// 14. eventfd.h (Flags -> HEX)
+static const struct int_const eventfd_consts[] = {
+  { "EFD_CLOEXEC",   EFD_CLOEXEC   },
+  { "EFD_NONBLOCK",  EFD_NONBLOCK  },
+  { "EFD_SEMAPHORE", EFD_SEMAPHORE }
 };
 
 /*
@@ -563,6 +574,19 @@ void print_sockaddr_un_info (int alignment)
   }
 }
 
+void print_eventfd_constants (int alignment)
+{
+  puts ("  -- sys/eventfd.h");
+
+  for (size_t i = 0; i < ARRAY_SIZE (eventfd_consts); i++)
+  {
+    printf ("  %-*s : constant := 16#%" PRIX64 "#;\n",
+            alignment,
+            eventfd_consts[i].name,
+            (uint64_t) eventfd_consts[i].value);
+  }
+}
+
 int main ()
 {
   puts (header);
@@ -597,21 +621,23 @@ int main ()
   UPDATE_GLOBAL_MAX (time_ints);
   UPDATE_GLOBAL_MAX (time_sizes);
   UPDATE_GLOBAL_MAX (sockaddr_un_sizes);
+  UPDATE_GLOBAL_MAX (eventfd_consts);
 
   // 3. Print Constants with Global Alignment
-  print_dlfcn_constants  (global_max_len);
-  print_syslog_constants (global_max_len);
-  print_signal_constants (global_max_len);
-  print_errno_constants  (global_max_len);
-  print_kevent_constants (global_max_len);
-  print_unistd_constants (global_max_len);
-  print_fcntl_constants  (global_max_len);
-  print_flock_constants  (global_max_len);
-  print_socket_constants (global_max_len);
-  print_poll_constants   (global_max_len);
-  print_locale_constants (global_max_len);
-  print_time_constants   (global_max_len);
-  print_sockaddr_un_info (global_max_len);
+  print_dlfcn_constants   (global_max_len);
+  print_syslog_constants  (global_max_len);
+  print_signal_constants  (global_max_len);
+  print_errno_constants   (global_max_len);
+  print_kevent_constants  (global_max_len);
+  print_unistd_constants  (global_max_len);
+  print_fcntl_constants   (global_max_len);
+  print_flock_constants   (global_max_len);
+  print_socket_constants  (global_max_len);
+  print_poll_constants    (global_max_len);
+  print_locale_constants  (global_max_len);
+  print_time_constants    (global_max_len);
+  print_sockaddr_un_info  (global_max_len);
+  print_eventfd_constants (global_max_len);
 
   puts (footer);
 
